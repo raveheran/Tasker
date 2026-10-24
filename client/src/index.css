@@ -1,0 +1,228 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-background: #0f1117;
+  --color-foreground: #e5e7eb;
+  --color-card: #1a1b23;
+  --color-card-foreground: #e5e7eb;
+  --color-popover: #1a1b23;
+  --color-popover-foreground: #e5e7eb;
+  --color-primary: #818cf8;
+  --color-primary-foreground: #0f1117;
+  --color-secondary: #262730;
+  --color-secondary-foreground: #e5e7eb;
+  --color-muted: #262730;
+  --color-muted-foreground: #9ca3af;
+  --color-accent: #262730;
+  --color-accent-foreground: #e5e7eb;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #e5e7eb;
+  --color-border: #2e303a;
+  --color-input: #2e303a;
+  --color-ring: #818cf8;
+  --color-sidebar: #13141b;
+  --color-sidebar-foreground: #9ca3af;
+  --color-sidebar-accent: #262730;
+  --color-sidebar-border: #2e303a;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+
+/* ── MDEditor full-width fix ── */
+.w-md-editor {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.w-md-editor-content {
+  display: flex !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Override the inline style widths that the library sets */
+.w-md-editor-show-live .w-md-editor-area {
+  width: 50% !important;
+  max-width: 50% !important;
+  flex: none !important;
+}
+
+.w-md-editor-show-live .w-md-editor-preview {
+  width: 50% !important;
+  max-width: 50% !important;
+  flex: none !important;
+  position: relative !important;
+  overflow: auto !important;
+}
+
+.w-md-editor-preview > .wmde-markdown,
+.wmde-markdown {
+  max-width: 100% !important;
+}
+
+.w-md-editor-area > .w-md-editor-input,
+.w-md-editor-area textarea {
+  width: 100% !important;
+}
+
+/* ── MDEditor markdown preview list styles ── */
+.w-md-editor-preview ul,
+.wmde-markdown ul {
+  list-style: disc !important;
+  padding-left: 2em !important;
+}
+
+.w-md-editor-preview ol,
+.wmde-markdown ol {
+  list-style: decimal !important;
+  padding-left: 2em !important;
+}
+
+.w-md-editor-preview ul ul,
+.wmde-markdown ul ul {
+  list-style: circle !important;
+}
+
+.w-md-editor-preview ul ul ul,
+.wmde-markdown ul ul ul {
+  list-style: square !important;
+}
+
+.w-md-editor-preview li,
+.wmde-markdown li {
+  display: list-item !important;
+}
+
+/* ── FullCalendar dark theme overrides ── */
+
+.tasker-calendar {
+  --fc-border-color: #2e303a;
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: #1a1b23;
+  --fc-list-event-hover-bg-color: #262730;
+  --fc-today-bg-color: rgba(129, 140, 248, 0.08);
+  --fc-event-border-color: transparent;
+  --fc-now-indicator-color: #818cf8;
+}
+
+.tasker-calendar .fc {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 0.875rem;
+}
+
+.tasker-calendar .fc-toolbar-title {
+  color: #e5e7eb;
+  font-size: 1.1rem !important;
+  font-weight: 600;
+}
+
+.tasker-calendar .fc-button {
+  background: #262730 !important;
+  border-color: #2e303a !important;
+  color: #e5e7eb !important;
+  font-size: 0.8rem !important;
+  padding: 4px 12px !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+}
+
+.tasker-calendar .fc-button:hover {
+  background: #3a3b4a !important;
+}
+
+.tasker-calendar .fc-button-active {
+  background: #818cf8 !important;
+  border-color: #818cf8 !important;
+}
+
+.tasker-calendar .fc-col-header-cell {
+  color: #9ca3af;
+  font-weight: 500;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  padding: 8px 0;
+}
+
+.tasker-calendar .fc-daygrid-day-number {
+  color: #9ca3af;
+  font-size: 0.8rem;
+  padding: 6px 8px;
+}
+
+.tasker-calendar .fc-day-today .fc-daygrid-day-number {
+  color: #818cf8;
+  font-weight: 700;
+}
+
+.tasker-calendar .fc-event {
+  border-radius: 4px !important;
+  padding: 1px 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.tasker-calendar .fc-timegrid-slot {
+  border-color: #2e303a;
+}
+
+.tasker-calendar .fc-timegrid-slot-label {
+  color: #6b7280;
+  font-size: 0.7rem;
+}
+
+.tasker-calendar .fc-timegrid-axis {
+  color: #6b7280;
+}
+
+.tasker-calendar .fc-scrollgrid {
+  border-color: #2e303a !important;
+  width: 100% !important;
+}
+
+.tasker-calendar .fc-view-harness {
+  width: 100% !important;
+}
+
+.tasker-calendar .fc-theme-standard td,
+.tasker-calendar .fc-theme-standard th {
+  border-color: #2e303a;
+}
