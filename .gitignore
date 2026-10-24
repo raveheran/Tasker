@@ -38,6 +38,3 @@ Thumbs.db
 # Claude Code local settings
 .claude/settings.local.json
 
-# Sync-conflict copies and manual lockfile backups (OneDrive/Dropbox leftovers)
-*-ILTLVMAC*
-package-lock_.json
