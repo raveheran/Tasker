@@ -1,0 +1,20 @@
+# Normalise line endings: store LF in the repo, let git convert on checkout
+* text=auto
+
+# Always LF (read by Node/SQL tooling regardless of platform)
+*.sql text eol=lf
+*.sh text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.db binary
+*.sqlite binary
+
+# Lockfiles: don't show noisy diffs
+package-lock.json -diff linguist-generated
