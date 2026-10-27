@@ -1,8 +1,10 @@
-import { useEffect, useCallback } from 'react';
-import { WifiOff, X, AlertTriangle, AlertCircle, Undo2 } from 'lucide-react';
+import { useEffect, useCallback, useState } from 'react';
+import { WifiOff, X, AlertTriangle, AlertCircle, Undo2, DatabaseZap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useConnectionStore, type Toast } from '@/store';
-import { checkHealth } from '@/api';
+import { checkHealth, workspacesApi } from '@/api';
+import { DEFAULT_WORKSPACE_ID, getActiveWorkspaceId, switchWorkspace, takeNotice } from '@/lib/workspace';
+import type { Workspace } from '@/types';
 
 const HEALTH_INTERVAL = 15_000; // 15 seconds
 
@@ -12,12 +14,19 @@ const HEALTH_INTERVAL = 15_000; // 15 seconds
  * 2. Toast notifications for save errors
  */
 export function ConnectionGuard() {
-  const { serverOnline, setServerOnline, toasts, dismissToast } = useConnectionStore();
+  const { serverOnline, setServerOnline, workspaceError, setWorkspaceError, toasts, dismissToast, addToast } = useConnectionStore();
 
   const runCheck = useCallback(async () => {
-    const ok = await checkHealth();
-    setServerOnline(ok);
-  }, [setServerOnline]);
+    const health = await checkHealth();
+    setServerOnline(health.online);
+    setWorkspaceError(health.workspaceError ?? null);
+  }, [setServerOnline, setWorkspaceError]);
+
+  // Message left by a workspace fallback (e.g. the workspace was deleted in another tab)
+  useEffect(() => {
+    const notice = takeNotice();
+    if (notice) addToast(notice, 'warning');
+  }, [addToast]);
 
   // Periodic health check
   useEffect(() => {
@@ -45,6 +54,11 @@ export function ConnectionGuard() {
         </div>
       )}
 
+      {/* This tab's workspace database is missing or corrupt */}
+      {serverOnline && workspaceError && (
+        <WorkspaceUnavailable message={workspaceError} onRetry={runCheck} />
+      )}
+
       {/* Toast stack */}
       <div className="fixed bottom-4 right-4 z-[200] flex flex-col gap-2 max-w-sm">
         {toasts.map((toast) => (
@@ -52,6 +66,57 @@ export function ConnectionGuard() {
         ))}
       </div>
     </>
+  );
+}
+
+function WorkspaceUnavailable({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const [others, setOthers] = useState<Workspace[]>([]);
+
+  useEffect(() => {
+    workspacesApi.list().then(setOthers).catch(() => setOthers([]));
+  }, []);
+
+  const activeId = getActiveWorkspaceId();
+  const alternatives = others.filter((w) => w.id !== activeId && w.status === 'ok');
+
+  return (
+    <div className="fixed inset-0 z-[250] flex items-center justify-center bg-background/95 p-6">
+      <div className="max-w-md w-full bg-card border border-border rounded-lg shadow-xl p-6 space-y-4">
+        <div className="flex items-center gap-2 text-destructive">
+          <DatabaseZap className="h-5 w-5" />
+          <h2 className="text-lg font-semibold">Workspace unavailable</h2>
+        </div>
+        <p className="text-sm text-muted-foreground break-words">{message}</p>
+        <p className="text-xs text-muted-foreground">
+          Nothing was changed or deleted. Switch to another workspace, or restore the database file and retry.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {alternatives.map((w) => (
+            <button
+              key={w.id}
+              onClick={() => switchWorkspace(w.id)}
+              className="h-8 px-3 bg-primary text-primary-foreground text-sm rounded-md hover:bg-primary/90"
+            >
+              Switch to {w.name}
+            </button>
+          ))}
+          {alternatives.length === 0 && activeId !== DEFAULT_WORKSPACE_ID && (
+            <button
+              onClick={() => switchWorkspace(DEFAULT_WORKSPACE_ID)}
+              className="h-8 px-3 bg-primary text-primary-foreground text-sm rounded-md hover:bg-primary/90"
+            >
+              Switch to Default
+            </button>
+          )}
+          <button
+            onClick={onRetry}
+            className="h-8 px-3 bg-secondary text-foreground text-sm rounded-md hover:bg-secondary/80"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

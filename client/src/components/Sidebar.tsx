@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store';
 import { GlobalSearch } from '@/components/GlobalSearch';
+import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher';
 import type { SpaceName } from '@/types';
 
 interface NavItem {
@@ -50,11 +51,12 @@ export function Sidebar() {
   return (
     <aside className="w-56 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0">
       {/* Logo */}
-      <div className="px-4 py-4 border-b border-sidebar-border">
-        <h1 className="text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
+      <div className="relative px-4 py-4 border-b border-sidebar-border flex items-center justify-between gap-2">
+        <h1 className="text-lg font-bold text-foreground tracking-tight flex items-center gap-2 flex-shrink-0">
           <img src="/favicon.svg" alt="" className="h-5 w-5" />
           Tasker
         </h1>
+        <WorkspaceSwitcher />
       </div>
 
       {/* Search */}
