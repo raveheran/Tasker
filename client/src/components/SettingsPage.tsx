@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Plus, Trash2, GripVertical, Download, Eye, EyeOff } from 'lucide-react';
 import { useStatuses, useCreateStatus, useUpdateStatus, useDeleteStatus, useSprints, useCreateSprint, useUpdateSprint, useDeleteSprint, useActivateSprint, useLabels, useCreateLabel, useUpdateLabel, useDeleteLabel, useSettings, useUpdateSetting } from '@/hooks';
 import type { Status } from '@/types';
+import { withWorkspace } from '@/lib/workspace';
+import { WorkspaceSettings } from '@/components/WorkspaceSettings';
 
 function StatusRow({ status, onUpdate, onDelete }: { status: Status; onUpdate: (data: Partial<Status>) => void; onDelete: () => void }) {
   return (
@@ -221,6 +223,7 @@ export function SettingsPage() {
   return (
     <div className="p-6 max-w-2xl space-y-8 h-full overflow-y-auto">
       <h2 className="text-xl font-semibold text-foreground">Settings</h2>
+      <WorkspaceSettings />
       <GeneralSettings />
       <StatusSettings />
       <SprintSettings />
@@ -278,7 +281,7 @@ function ExportSection() {
       <h3 className="text-sm font-medium text-foreground mb-3">Data Export</h3>
       <div className="flex items-center gap-3">
         <a
-          href="/api/export/json"
+          href={withWorkspace('/api/export/json')}
           download
           className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-foreground text-sm rounded-md hover:bg-secondary/80 transition-colors"
         >
@@ -286,7 +289,7 @@ function ExportSection() {
           Export All (JSON)
         </a>
         <a
-          href="/api/export/tasks-csv"
+          href={withWorkspace('/api/export/tasks-csv')}
           download
           className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-foreground text-sm rounded-md hover:bg-secondary/80 transition-colors"
         >
@@ -294,7 +297,7 @@ function ExportSection() {
           Export Tasks (CSV)
         </a>
         <a
-          href="/api/export/tasks-csv?include_archived=true"
+          href={withWorkspace('/api/export/tasks-csv?include_archived=true')}
           download
           className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-foreground text-sm rounded-md hover:bg-secondary/80 transition-colors"
         >
