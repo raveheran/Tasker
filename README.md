@@ -9,6 +9,7 @@ A self-hosted, single-user task management app with five views (table, Kanban, c
 - [Architecture](#architecture)
 - [Getting Started](#getting-started)
 - [Core Concepts](#core-concepts)
+- [Workspaces](#workspaces)
 - [Application Guide](#application-guide)
 - [Data Model](#data-model)
 - [API Reference](#api-reference)
@@ -100,7 +101,15 @@ Open <http://localhost:5173> in dev mode. The Vite proxy targets port 3000, so k
 
 ### First run
 
-The database is created automatically on first start at `~/.tasker/tasker.db` (on Windows: `C:\Users\<you>\.tasker\tasker.db`), seeded with the default statuses and templates. Nothing else needs to be configured.
+The database is created automatically on first start at `~/.tasker/tasker.db` (on Windows: `C:\Users\<you>\.tasker\tasker.db`), seeded with the default statuses and templates. It becomes your **Default** workspace (see [Workspaces](#workspaces)). Nothing else needs to be configured.
+
+Optional environment variables:
+
+| Variable | Effect |
+| --- | --- |
+| `PORT` | HTTP port (default `3000`) |
+| `TASKER_HOME` | Use another data folder instead of `~/.tasker` (handy for testing or a portable setup) |
+| `TASKER_NO_OPEN` | Set to any value to stop the server opening your browser on start |
 
 ### Quick tour
 
@@ -126,7 +135,8 @@ The database is created automatically on first start at `~/.tasker/tasker.db` (o
 package.json            server scripts and dependencies
 server/
   index.ts              Express bootstrap, route registration, static serving
-  db.ts                 SQLite connection and schema/migration runner
+  db.ts                 SQLite connection pool (one per workspace) and schema/migration runner
+  workspaces.ts         workspace registry, create/rename/delete, per-request selection
   schema.sql            tables, indexes, seed data, additive migrations
   routes/               one module per domain (tasks, notes, sprints, ...)
 client/
@@ -135,6 +145,7 @@ client/
   src/
     api.ts · hooks.ts   typed REST client and TanStack Query hooks
     store.ts            persisted UI/filter state (Zustand)
+    lib/workspace.ts    which workspace this browser tab uses
     components/         one component per space, view, or control
 resources/ideas/        original requirements specification
 TASKER_RECREATION_BRIEF.md   implementation brief for rebuilding the app
@@ -151,6 +162,29 @@ TASKER_RECREATION_BRIEF.md   implementation brief for rebuilding the app
 - **Templates** define reusable Markdown content and subtask checklists that can be applied when creating tasks or notes.
 - **Task flags**: ❗️ Priority · ⚡️ Quick · 🪢 Requires Other (blocked by external dependency).
 - **Recurring tasks** auto-generate the next occurrence when marked Done (daily, weekdays, weekly, biweekly, monthly).
+
+---
+
+## Workspaces
+
+A workspace is a completely separate Tasker database — its own tasks, stories, notes, statuses, sprints, labels, templates, settings and uploaded images. Use them to keep, say, work and personal planning apart.
+
+- **Switch** from the small menu at the top of the sidebar, opposite the Tasker logo. The browser tab title shows the active workspace.
+- **Create, rename, switch to and delete** workspaces in **Settings → Workspaces**, which also shows each workspace's folder, task count and last-modified time.
+- **Two tabs, two workspaces:** every browser tab remembers its own workspace, so you can work in different workspaces side by side. A new tab starts in the workspace you used last.
+- **Your existing data is the "Default" workspace.** It stays exactly where it always was (`~/.tasker/tasker.db` and `~/.tasker/uploads/`) — it is registered in place, never moved or copied. It can be renamed but never deleted.
+- **Deleting** a workspace needs two confirmations (a warning, then typing its name). Nothing is erased outright: the folder is moved to `~/.tasker/trash/`, so you can restore it by hand if you change your mind. You can't delete the workspace you are currently in.
+- **Filters** (status, sprint, label…) are remembered per workspace, since they refer to that workspace's own IDs.
+- If a workspace's database file goes missing or can't be opened, Tasker shows it as unavailable and offers to switch to another workspace instead of creating an empty database.
+
+Where things live on disk:
+
+| Path | Contents |
+| --- | --- |
+| `~/.tasker/tasker.db`, `~/.tasker/uploads/` | The Default workspace (original location) |
+| `~/.tasker/workspaces/<id>/` | Every other workspace: `tasker.db` and `uploads/` |
+| `~/.tasker/workspaces.json` | Registry of workspace names (rebuilt automatically if damaged) |
+| `~/.tasker/trash/` | Deleted workspaces, kept until you remove them |
 
 ---
 
@@ -225,7 +259,7 @@ Chronological feed of all changes (creations, status changes, updates, deletions
 
 ### Settings
 
-Manage **Statuses** (name, color, phase — cannot delete if in use), **Sprints** (create, set dates, activate), **Labels** (name, color), and **App Settings** (default effort days, default task status). Also provides JSON and CSV export buttons. Labels can be hidden from pickers here without deleting them.
+Manage **Workspaces** (create, rename, switch, delete), **Statuses** (name, color, phase — cannot delete if in use), **Sprints** (create, set dates, activate), **Labels** (name, color), and **App Settings** (default effort days, default task status). Also provides JSON and CSV export buttons. Labels can be hidden from pickers here without deleting them.
 
 ### Quick Add & Global Search
 
@@ -303,7 +337,7 @@ Same status/sprint/label/archive model as tasks, plus a `details` Markdown field
 
 ## API Reference
 
-All endpoints are under `/api`. Bodies are JSON. `GET /api/health` returns `{ status, db }`.
+All endpoints are under `/api`. Bodies are JSON. `GET /api/health` returns `{ status, db, workspace }`.
 
 ### Tasks (`/api/tasks`)
 
@@ -422,6 +456,17 @@ All endpoints are under `/api`. Bodies are JSON. `GET /api/health` returns `{ st
 | POST | `/api/templates/:id/create-task` | Create a new task from template |
 | POST | `/api/templates/:id/create-note` | Create a new note from template |
 
+### Workspaces (`/api/workspaces`)
+
+Every other `/api` request runs against one workspace, chosen by the `X-Workspace: <id>` header (or `?ws=<id>` for URLs the browser loads itself, such as images and downloads). With neither, the **default** workspace is used, so existing scripts and old image links keep working. An unknown id returns `404` with `code: "WORKSPACE_NOT_FOUND"`; a missing or corrupt database returns `503` with `code: "WORKSPACE_UNAVAILABLE"`.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/api/workspaces` | List workspaces (`?stats=1` adds task count and last-modified time) |
+| POST | `/api/workspaces` | Create a workspace with its own database (`{ name }`) |
+| PUT | `/api/workspaces/:id` | Rename (`{ name }`); files on disk are not touched |
+| DELETE | `/api/workspaces/:id` | Move to trash (`{ confirm_name }` must equal the workspace name). Rejected for the default workspace and for the workspace named in `X-Workspace` |
+
 ### Other Endpoints
 
 | Method | Path | Description |
@@ -445,8 +490,9 @@ All data lives locally — no accounts, no cloud sync:
 
 | Path | Contents |
 | --- | --- |
-| `~/.tasker/tasker.db` | SQLite database (WAL mode). Auto-created on first run; schema migrations handled automatically. |
-| `~/.tasker/uploads/` | Uploaded images (pasted into Markdown editors). |
+| `~/.tasker/tasker.db` | SQLite database of the Default workspace (WAL mode). Auto-created on first run; schema migrations handled automatically. |
+| `~/.tasker/uploads/` | Uploaded images of the Default workspace (pasted into Markdown editors). |
+| `~/.tasker/workspaces/<id>/` | Database and uploads of each additional [workspace](#workspaces). |
 
 The `~/.tasker/` path avoids conflicts with cloud-synced project directories (OneDrive, Dropbox, etc.).
 
@@ -455,6 +501,8 @@ The `~/.tasker/` path avoids conflicts with cloud-synced project directories (On
 ```bash
 cp ~/.tasker/tasker.db ~/.tasker/tasker-backup-$(date +%Y%m%d).db
 ```
+
+To back up everything including all workspaces, copy the whole `~/.tasker/` folder while Tasker is stopped.
 
 You can also export via the Settings UI or the `/api/export/json` and `/api/export/tasks-csv` endpoints (see [API Reference](#api-reference)).
 
