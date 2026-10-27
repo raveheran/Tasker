@@ -1,3 +1,5 @@
+import { workspaceHeaders } from '@/lib/workspace';
+
 /** Upload a pasted/dropped image to the server and return its markdown URL */
 export async function uploadImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -6,7 +8,7 @@ export async function uploadImage(file: File): Promise<string> {
       try {
         const res = await fetch('/api/uploads', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...workspaceHeaders() },
           body: JSON.stringify({ data: reader.result, filename: file.name }),
         });
         if (!res.ok) throw new Error('Upload failed');

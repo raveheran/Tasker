@@ -299,3 +299,19 @@ export interface SearchResults {
     updated_at: string;
   }[];
 }
+
+// ── Workspaces ──
+
+export interface Workspace {
+  id: string;
+  name: string;
+  created_at: string;
+  is_default: boolean;
+  /** Folder on disk holding this workspace's database */
+  path: string;
+  status: 'ok' | 'missing' | 'error';
+  error?: string;
+  /** Only present when listed with stats */
+  task_count?: number;
+  last_modified?: string | null;
+}

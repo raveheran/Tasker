@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { SpaceName, TaskViewMode } from './types';
+import { workspaceStorageKey } from './lib/workspace';
 
 interface UIState {
   activeSpace: SpaceName;
@@ -105,7 +106,8 @@ export const useFilterStore = create<FilterState>()(
         set({ statusId: undefined, sprintId: undefined, labelId: undefined, searchText: '', statusPhase: undefined, sortField: 'created_at', sortDir: 'desc' }),
     }),
     {
-      name: 'tasker-filters',
+      // Filters reference status/sprint/label IDs, which are specific to one workspace's database
+      name: workspaceStorageKey('tasker-filters'),
       partialize: (state) => ({
         statusId: state.statusId,
         sprintId: state.sprintId,
@@ -132,8 +134,11 @@ export interface Toast {
 
 interface ConnectionState {
   serverOnline: boolean;
+  /** Set when this tab's workspace database cannot be opened */
+  workspaceError: string | null;
   toasts: Toast[];
   setServerOnline: (online: boolean) => void;
+  setWorkspaceError: (message: string | null) => void;
   addToast: (message: string, type: Toast['type'], onUndo?: () => void) => void;
   dismissToast: (id: number) => void;
 }
@@ -142,8 +147,10 @@ let toastId = 0;
 
 export const useConnectionStore = create<ConnectionState>((set) => ({
   serverOnline: true,
+  workspaceError: null,
   toasts: [],
   setServerOnline: (online) => set({ serverOnline: online }),
+  setWorkspaceError: (message) => set({ workspaceError: message }),
   addToast: (message, type, onUndo) => {
     const id = ++toastId;
     set((s) => ({ toasts: [...s.toasts, { id, message, type, timestamp: Date.now(), onUndo }] }));

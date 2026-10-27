@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { tasksApi, statusesApi, sprintsApi, labelsApi, templatesApi, userStoriesApi, notesApi, dashboardApi, searchApi, dependenciesApi, activityApi, settingsApi } from './api';
+import { tasksApi, statusesApi, sprintsApi, labelsApi, templatesApi, userStoriesApi, notesApi, dashboardApi, searchApi, dependenciesApi, activityApi, settingsApi, workspacesApi } from './api';
 import type {
   TaskFilters, TaskCreateInput, TaskUpdateInput,
   UserStoryFilters, UserStoryCreateInput, UserStoryUpdateInput,
@@ -626,5 +626,39 @@ export function useUpdateSetting() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['settings'] });
     },
+  });
+}
+
+// ── Workspaces ──
+
+export function useWorkspaces(withStats = false) {
+  return useQuery({
+    queryKey: ['workspaces', { stats: withStats }],
+    queryFn: () => workspacesApi.list(withStats),
+    staleTime: 5_000,
+  });
+}
+
+export function useCreateWorkspace() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => workspacesApi.create(name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['workspaces'] }),
+  });
+}
+
+export function useRenameWorkspace() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => workspacesApi.rename(id, name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['workspaces'] }),
+  });
+}
+
+export function useDeleteWorkspace() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, confirmName }: { id: string; confirmName: string }) => workspacesApi.delete(id, confirmName),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['workspaces'] }),
   });
 }

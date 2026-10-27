@@ -3,8 +3,9 @@ import type {
   Status, Sprint, Label, Template, Subtask,
   UserStory, UserStoryFilters, UserStoryCreateInput, UserStoryUpdateInput,
   Note, NoteFilters, NoteCreateInput, NoteUpdateInput,
-  DashboardData, SearchResults, LinkedTask, LinkedNote, ActivityEntry,
+  DashboardData, SearchResults, LinkedTask, LinkedNote, ActivityEntry, Workspace,
 } from './types';
+import { workspaceHeaders, handleWorkspaceGone } from './lib/workspace';
 
 const BASE = '/api';
 
@@ -12,28 +13,58 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${BASE}${url}`, {
-      headers: { 'Content-Type': 'application/json' },
       ...options,
+      headers: { 'Content-Type': 'application/json', ...workspaceHeaders(), ...options?.headers },
     });
   } catch {
     throw new Error('Cannot reach the server. Your changes may not be saved.');
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
+    if (err.code === 'WORKSPACE_NOT_FOUND') handleWorkspaceGone();
     throw new Error(err.error || res.statusText);
   }
   return res.json();
 }
 
+export interface HealthResult {
+  /** Server reachable and answering */
+  online: boolean;
+  /** Set when the server is up but this tab's workspace cannot be opened (missing/corrupt database) */
+  workspaceError?: string;
+}
+
 // Health check
-export async function checkHealth(): Promise<boolean> {
+export async function checkHealth(): Promise<HealthResult> {
   try {
-    const res = await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(5000) });
-    return res.ok;
+    const res = await fetch(`${BASE}/health`, { headers: workspaceHeaders(), signal: AbortSignal.timeout(5000) });
+    if (res.ok) return { online: true };
+    const body = await res.json().catch(() => ({}));
+    if (body.code === 'WORKSPACE_NOT_FOUND') {
+      handleWorkspaceGone();
+      return { online: true };
+    }
+    if (body.code === 'WORKSPACE_UNAVAILABLE') return { online: true, workspaceError: body.error };
+    return { online: false };
   } catch {
-    return false;
+    return { online: false };
   }
 }
+
+// ── Workspaces ──
+
+export const workspacesApi = {
+  list: (withStats = false) => request<Workspace[]>(`/workspaces${withStats ? '?stats=1' : ''}`),
+  create: (name: string) =>
+    request<Workspace>('/workspaces', { method: 'POST', body: JSON.stringify({ name }) }),
+  rename: (id: string, name: string) =>
+    request<Workspace>(`/workspaces/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify({ name }) }),
+  delete: (id: string, confirmName: string) =>
+    request<{ success: boolean; trashed_to: string | null }>(`/workspaces/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ confirm_name: confirmName }),
+    }),
+};
 
 // ── Tasks ──
 
