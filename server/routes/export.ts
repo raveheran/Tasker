@@ -1,7 +1,12 @@
 import { Router, Request, Response } from 'express';
-import { getDb } from '../db';
+import { getDb, currentWorkspace } from '../db';
 
 const router = Router();
+
+// Filename-safe slug of the active workspace's name, so exports from different workspaces are distinguishable
+function workspaceSlug(): string {
+  return currentWorkspace().name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'workspace';
+}
 
 // GET export all data as JSON
 router.get('/json', (_req: Request, res: Response) => {
@@ -25,7 +30,7 @@ router.get('/json', (_req: Request, res: Response) => {
   };
 
   res.setHeader('Content-Type', 'application/json');
-  res.setHeader('Content-Disposition', `attachment; filename="tasker-export-${new Date().toISOString().split('T')[0]}.json"`);
+  res.setHeader('Content-Disposition', `attachment; filename="tasker-${workspaceSlug()}-export-${new Date().toISOString().split('T')[0]}.json"`);
   res.json(data);
 });
 
@@ -69,7 +74,7 @@ router.get('/tasks-csv', (req: Request, res: Response) => {
   const csv = [headers.join(','), ...rows].join('\n');
 
   res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', `attachment; filename="tasker-tasks-${new Date().toISOString().split('T')[0]}.csv"`);
+  res.setHeader('Content-Disposition', `attachment; filename="tasker-${workspaceSlug()}-tasks-${new Date().toISOString().split('T')[0]}.csv"`);
   res.send(csv);
 });
 

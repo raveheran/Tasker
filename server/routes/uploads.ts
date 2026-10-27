@@ -2,16 +2,19 @@ import { Router, Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import os from 'os';
+import { currentWorkspace, DEFAULT_WORKSPACE_ID } from '../db';
 
 const router = Router();
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(os.homedir(), '.tasker', 'uploads');
-fs.mkdirSync(uploadsDir, { recursive: true });
+// Each workspace keeps its own uploads folder next to its database
+function uploadsDirFor(dir: string): string {
+  return path.join(dir, 'uploads');
+}
 
 // POST /api/uploads - accepts base64 image data
 router.post('/', (req: Request, res: Response) => {
+  const ws = currentWorkspace();
+  const uploadsDir = uploadsDirFor(ws.dir);
   const { data, filename } = req.body;
   if (!data) {
     res.status(400).json({ error: 'No image data provided' });
@@ -33,8 +36,12 @@ router.post('/', (req: Request, res: Response) => {
   const filePath = path.join(uploadsDir, safeName);
 
   try {
+    fs.mkdirSync(uploadsDir, { recursive: true });
     fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
-    res.json({ url: `/api/uploads/${safeName}` });
+    // Images are loaded by the browser directly (no custom headers), so non-default workspaces carry
+    // their id in the URL. The default workspace keeps the original, parameter-free URL.
+    const suffix = ws.id === DEFAULT_WORKSPACE_ID ? '' : `?ws=${encodeURIComponent(ws.id)}`;
+    res.json({ url: `/api/uploads/${safeName}${suffix}` });
   } catch (e: any) {
     res.status(500).json({ error: 'Failed to save image: ' + e.message });
   }
@@ -42,6 +49,7 @@ router.post('/', (req: Request, res: Response) => {
 
 // GET /api/uploads/:filename - serve uploaded images
 router.get('/:filename', (req: Request, res: Response) => {
+  const uploadsDir = uploadsDirFor(currentWorkspace().dir);
   const rawFilename = req.params.filename;
   const filename = path.basename(Array.isArray(rawFilename) ? rawFilename[0] : rawFilename); // prevent path traversal
   const filePath = path.join(uploadsDir, filename);
